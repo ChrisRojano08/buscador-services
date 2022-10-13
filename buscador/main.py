@@ -13,7 +13,7 @@ app = Flask(__name__)
 def test():
     return "<h1 style='color:blue'>Hello There!</h1>"
 
-@app.route("/generateUrls", methods=['POST'])
+@app.route("/generateUrls")
 def generateUrls():
     try:
         response = extractor.extractor()
@@ -23,7 +23,7 @@ def generateUrls():
         logging.exception(e)
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
-@app.route("/getUrls", methods=['POST'])
+@app.route("/getUrls")
 def getUrls():
     try:
         response = extractor.getUrls()
@@ -33,10 +33,20 @@ def getUrls():
         logging.exception(e)
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
-@app.route("/generateIdx", methods=['POST'])
+@app.route("/generateIdx")
 def generateIdx():
     try:
         response = indices.generateIdx()
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
+@app.route("/getIdx")
+def getIdx():
+    try:
+        response = indices.getIdx()
 
         return response
     except Exception as e:

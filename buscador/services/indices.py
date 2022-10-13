@@ -1,10 +1,12 @@
 import re
 import urllib.request
+from xml.dom import NotFoundErr
 import nltk
 from nltk.tokenize import regexp_tokenize
 from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
 import os
+from os.path import exists
 import logging
 from flask import jsonify
 import json
@@ -127,24 +129,48 @@ class Indices:
 
     def saveTxt(textIn, nameF):
         pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', nameF)
-
-        with open(pathFile, "w", encoding="utf-8") as f:
-            if isinstance(textIn, str):
+        
+        if isinstance(textIn, str):
+            with open(pathFile, "a", encoding="utf-8") as f:
                 f.write(textIn)
-            elif isinstance(textIn, dict):
-                f.write(json.dumps(textIn))
-        f.close()
+                f.write('\n')
+
+            f.close()
+        elif isinstance(textIn, dict):
+            with open(pathFile, "w", encoding="utf-8") as f:
+                f.write(json.dumps(textIn, ensure_ascii=False))
+
+            f.close()
+
+    def removeRepite(words, chrRmv, numb):
+        chrTup = []
+        chrFind = ''
+        for _ in range(0, numb):
+            chrFind+=chrRmv
+            chrTup.append(chrFind)
+        return [word for word in words if not(word in chrTup)]
+
+    def containsNumber(value):
+        if True in [char.isdigit() for char in value]:
+            return True
+        return False
 
     def readTxt(url, prevText, pathFile):
         text = prevText
         text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
+
         tokenizer = RegexpTokenizer('\s+', gaps=True)
         tp = tuple(tokenizer.tokenize(text))
         spanish_stop = set(stopwords.words('spanish'))
+        tp = [word for word in tp if not(Indices.containsNumber(word))]
         tp = [word for word in tp if not word.isnumeric()]
         tp = [word for word in tp if word.isalnum()]
         tp = [word for word in tp if word.lower() not in spanish_stop]
         tps = set(tp)
+
+        tps = Indices.removeRepite(tps, 't', 75)
+        tps = Indices.removeRepite(tps, 'e', 25)
+
         finaltp = []
         for i in tps:
             if len(i) > 2:
@@ -155,25 +181,44 @@ class Indices:
         
         # Indices.saveTxt(textIn=str(finaltp).replace(" ", "\n"), nameF=pathFile)
         return finaltp
+    
+    def getDict(pathFile):
+        data = {}
+        if exists(pathFile):
+                with open(pathFile, encoding="utf8") as f:
+                    data = json.load(f)
+        return data
         
     def generateIdx(self):
         urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
+        pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'dictionay.txt')
+
         try:
             urls = open(pathFile, encoding="utf8")
             urls = [word.strip() for word in urls.readlines()]
             i = 0
 
             idx = {}
+            prevDict = Indices.getDict(pathFileDict)
             for url in urls:
-                logging.error(url)
-                text = Indices.getText(url)
-                indN = Indices.readTxt(url=url, prevText=text, pathFile=("text"+str(i)+".txt"))
+                if not(url in prevDict):
+                    text = Indices.getText(url)
+                    if len(text) > 0:
+                        indN = Indices.readTxt(url=url, prevText=text, pathFile=("text"+str(i)+".txt"))
+                        idx[''+url+''] = indN
+                        i += 1
 
-                idx[''+url+''] = indN
-                i += 1
+                    logging.error(url)
 
-            # logging.error(idx)
-            Indices.saveTxt(idx, 'dictionay.txt')
+            if len(idx) > 0:
+                if len(prevDict)>0:
+                    newDict = idx.copy()
+                    for key, value in prevDict.items():
+                        newDict[key] = value
+                    
+                    Indices.saveTxt(newDict, 'dictionay.txt')
+                else:
+                    Indices.saveTxt(idx, 'dictionay.txt')
 
         except Exception as e:
             logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
@@ -182,8 +227,28 @@ class Indices:
         res = [
                 {
                     "status": 'Ok',
-                    "message": 'Se obtuvieron las urls con exito!',
+                    "message": 'Se generó el diccionario con exito!',
                     "data": 'si'
                 }
             ]
         return jsonify(res)
+
+    def getIdx(self):
+        pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'dictionay.txt')
+
+        try:
+            if exists(pathFile):
+                res = [
+                    {
+                        "status": 'Ok',
+                        "message": 'Se obtuvo el diccionario con exito!',
+                        "data": Indices.getDict(pathFile)
+                    }
+                ]
+
+                return jsonify(res)
+            else:
+                raise NotFoundErr('No se encontró el diccionario! Asegurese de haberlo creado antes')
+        except Exception as e:
+            logging.error("Error al obtener la informacion\nVerifique su archivo!")
+            return jsonify(status='Error', exception=''+str(e))
