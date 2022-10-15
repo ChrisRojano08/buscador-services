@@ -1,2 +1,6 @@
+
 .pyc
 buscador/env
+buscador/services/__pycache__
+extractor_urls.pyc
+__init__.pyc
