@@ -14,12 +14,13 @@ Para instalar este proyecto requiere de:
 
 Primero clone el repositorio desde la rama "master".
 Para instalar los paquetes necesarios para el proyecto solo ejecute el siguiente comando en la raiz del repositorio clonado:
+```
 pip install -r requeriments.txt
 ```
 
 ## Versiones
 - [0.1] Creación del algoritmo que extrae texto desde una url
 - [0.2] Creación del algortimo que genera una lista de urls a partir de un access.log de squid
-- [0.3] Combinación de lo metodos anteriores para generar el diccionario con las urls y sus palabras repetidas
+- [0.3] Combinación de lo métodos anteriores para generar el diccionario con las urls y sus palabras repetidas
 - [0.3.1] Documentación añadida
-
+- [0.3.2] Arreglos en el README.md y en la generación de la tupla
