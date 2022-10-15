@@ -1,4 +1,4 @@
-# buscador-services v0.3.1
+# buscador-services v0.3.2
 
 ## Proyecto buscador en python
 En el siguiente repositorio contiene el código realizado para generar un buscador web.
@@ -7,7 +7,7 @@ Con la lista de urls se genera un diccionario con las palabras y su numero de re
 ...
 
 
-##Instalación
+## Instalación
 Para instalar este proyecto requiere de:
 - Github
 - Python 3
