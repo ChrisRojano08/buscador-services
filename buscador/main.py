@@ -59,6 +59,17 @@ def getIdx():
         logging.exception(e)
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
+#Ruta para traducir el diccionario
+@app.route("/translateIdx")
+def trasnlateIdx():
+    try:
+        response = indices.trasnlateIdx()
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
 #Definimos que el host sera "localhost"
 if __name__ == "__main__":
     app.run(host='0.0.0.0')

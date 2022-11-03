@@ -1,5 +1,6 @@
 import re
 import urllib.request
+from webbrowser import get
 from xml.dom import NotFoundErr
 import nltk
 from nltk.tokenize import regexp_tokenize
@@ -10,6 +11,10 @@ from os.path import exists
 import logging
 from flask import jsonify
 import json
+import googletrans
+
+from .encoder import DictEncoder
+enc = DictEncoder()
 
 class Indices:
     #Eliminación de texto entre una etiqueta html (<math></math>, <verbose></verbose>, etc)
@@ -158,8 +163,11 @@ class Indices:
         #Si recibe un diccionario se convierte a un objeto json antes de guardarlo
         elif isinstance(textIn, dict):
             with open(pathFile, "w", encoding="utf-8") as f:
-                f.write(json.dumps(textIn, ensure_ascii=False))
+                f.write(json.dumps(textIn, ensure_ascii=False).replace('[','(').replace(']',')').replace('((','[(').replace('))',')]'))
+            f.close()
 
+            with open(pathFile.replace('.txt','_T.txt'), "w", encoding="utf-8") as f:
+                f.write(json.dumps(textIn, ensure_ascii=False))
             f.close()
 
     #Eliminación de cierto caracter que se repite hasta un "numb" de veces
@@ -203,20 +211,63 @@ class Indices:
         for i in tps:
             if len(i) > 2:
                 if tp.count(i) > 1:
-                    finaltp.append([i, tp.count(i)])
+                    aux = (i, tp.count(i))
+                    print(aux)
+                    finaltp.append(aux)
                 else:
-                    finaltp.append([i, tp.count(i)])
-        
+                    aux = (i, tp.count(i))
+                    finaltp.append(aux)
+
         return finaltp
+
+    def hinted_tuple_hook(obj):
+        if '__tuple__' in obj:
+            return tuple(obj['items'])
+        else:
+            return obj
     
     #Obtencion de un diccionario desde un archivo de texto
     def getDict(pathFile):
         data = {}
         if exists(pathFile):
-                with open(pathFile, encoding="utf8") as f:
+                with open(pathFile.replace('.txt','_T.txt'), encoding="utf8") as f:
                     data = json.load(f)
+
+        for key, value in data.items():
+            items = []
+            for item in value:
+                newIt = tuple(item)
+                items.append(newIt)
+
+            data[key] = items
+
         return data
-    
+
+    def translateIndex(pathFile):
+        translator = googletrans.Translator()
+
+        with open(pathFile, encoding="utf8") as f:
+            dummyDict = json.load(f)
+
+        engDict = {}
+        for key, value in dummyDict.items():
+            wordEng = []
+            for words in value:
+                translated = translator.translate(words[0], dest='en')
+                wordEng.append([translated.text, words[1]])
+            engDict[key] = wordEng
+
+        espDict = {}
+        for key, value in dummyDict.items():
+            wordEng = []
+            for words in value:
+                translated = translator.translate(words[0], dest='es')
+                wordEng.append([translated.text, words[1]])
+            espDict[key] = wordEng
+
+        Indices.saveTxt(engDict, 'indice-Eng')
+        Indices.saveTxt(espDict, 'indice-Esp')
+
     #Metodo principal que llama a los demás metodos que generan el diccionario
     def generateIdx(self):
         urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
@@ -246,7 +297,8 @@ class Indices:
                         idx[''+url+''] = indN
                         i += 1
 
-                    logging.error(url)
+            print(idx)
+
 
             #Si se encontro un diccionario previo
             if len(idx) > 0:
@@ -281,13 +333,38 @@ class Indices:
     def getIdx(self):
         pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice.txt')
 
+        Indices.translateIndex()
+
         try:
             if exists(pathFile):
                 res = [
                     {
                         "status": 'Ok',
                         "message": 'Se obtuvo el diccionario con exito!',
-                        "data": Indices.getDict(pathFile)
+                        "data": 'str(Indices.getDict(pathFile))'
+                    }
+                ]
+
+                return jsonify(res)
+            else:
+                raise NotFoundErr('No se encontró el diccionario! Asegurese de haberlo creado antes')
+        except Exception as e:
+            logging.error("Error al obtener la informacion\nVerifique su archivo!")
+            return jsonify(status='Error', exception=''+str(e))
+
+    #Metodo que lee el diccionario y lo traduce
+    def trasnlateIdx(self):
+        pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice_T.txt')
+
+        try:
+            if exists(pathFile):
+                Indices.translateIndex(pathFile)
+
+                res = [
+                    {
+                        "status": 'Ok',
+                        "message": 'Se obtuvo el diccionario con exito!',
+                        "data": 'str(Indices.getDict(pathFile))'
                     }
                 ]
 
