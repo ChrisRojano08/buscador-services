@@ -13,9 +13,6 @@ from flask import jsonify
 import json
 import googletrans
 
-from .encoder import DictEncoder
-enc = DictEncoder()
-
 class Indices:
     #Eliminación de texto entre una etiqueta html (<math></math>, <verbose></verbose>, etc)
     def removeBetweenTag(tagR, actI, txtF):
@@ -219,12 +216,6 @@ class Indices:
                     finaltp.append(aux)
 
         return finaltp
-
-    def hinted_tuple_hook(obj):
-        if '__tuple__' in obj:
-            return tuple(obj['items'])
-        else:
-            return obj
     
     #Obtencion de un diccionario desde un archivo de texto
     def getDict(pathFile):

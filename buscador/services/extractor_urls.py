@@ -6,6 +6,7 @@ from os.path import exists
 import whois
 from flask import jsonify
 import logging
+import urllib.request
 
 class Extractor: 
     #Validacion de urls mediante la libreria whois
@@ -27,7 +28,11 @@ class Extractor:
             
             if valiGoogle == -1 and valiGit == -1 and valilocal == -1:
                 if Extractor.is_registered(i):
-                    finalTxt.append(i)
+                    try:
+                        urllib.request.urlopen(i, timeout=25)
+                        finalTxt.append(i)
+                    except:
+                        print('',end='')
         return finalTxt
 
     #Obtención de urls
