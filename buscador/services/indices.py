@@ -12,6 +12,7 @@ import logging
 from flask import jsonify
 import json
 import googletrans
+import PyPDF2
 
 class Indices:
     #Eliminación de texto entre una etiqueta html (<math></math>, <verbose></verbose>, etc)
@@ -82,13 +83,39 @@ class Indices:
             #Caracteres y etiquetas html a eliminar
             uslessChars = [':', ",", ".", "/", "+", "\"", "\'", "\\", "\n", "$", "-", ">", '[', "]", "\t", "#"]
             uslessTags = ['script', 'semmantics', 'math', 'annotation', 'style']
+            typeUrl = ''
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
             logging.info('Solicitando info....')
             fp = urllib.request.urlopen(url, timeout=25)
             mybytes = fp.read()
+            headers = fp.getheaders()
 
-            mystr = mybytes.decode("utf8")
+            for head in headers:
+                if head[0] == 'Content-Type':
+                    if head[1] == 'application/pdf':
+                        try:
+                            file = open('savePDF' + ".pdf", 'wb')
+                            file.write(mybytes)
+                            file.close()
+
+                            pdfFileObj = open('savePDF' + ".pdf", 'rb')
+                            pdfReader = PyPDF2.PdfFileReader(pdfFileObj, strict=False)
+                            
+                            mystr = ''
+                            for pag in range(0, pdfReader.numPages):
+                                pageObj = pdfReader.getPage(pag)
+                                mystr += pageObj.extractText().replace('\n', ' ').replace('-', ' ')
+                            typeUrl = 'PDF'
+                        except:
+                            mystr = ''
+                    else:
+                        mystr = mybytes.decode("utf8")
+                        typeUrl = 'URL'
+            
+            if url.find("youtube.com") != -1:
+                typeUrl = 'YOUTUBE'
+
             fp.close()
             logging.info('Informacion de \"'+url+'\" obtenida, procesando...')
 
@@ -141,9 +168,10 @@ class Indices:
 
             logging.info('Informacion obtenida!\n')
         #Si ocurre algun error se guarda ''
-        except:
+        except Exception as e:
+            logging.error(str(e))
             newStr = ''
-        return newStr
+        return [newStr, typeUrl]
 
     #Guardado en un archivo txt
     def saveTxt(textIn, nameF):
@@ -184,10 +212,9 @@ class Indices:
 
     #Busqueda de palabras en un texto que obtiene el numero de veces que se repiten
     def readTxt(url, prevText, pathFile):
-
         #Se hace un filtrado previo para evitar caracteres que no sean palabras
         # tambien se eliminan los articulos (stopwords en ingles)
-        text = prevText
+        text = prevText[0].lower()
         text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
 
         tokenizer = RegexpTokenizer('\s+', gaps=True)
@@ -205,59 +232,125 @@ class Indices:
         #Se busca si "i" palabra ya fue previamente guardada
         # si no, se almacena junto con su numero de repeticiones
         finaltp = []
+        aux = ('**typeUrl**', prevText[1])
+        finaltp.append(aux)
         for i in tps:
-            if len(i) > 2:
-                if tp.count(i) > 1:
-                    aux = (i, tp.count(i))
-                    print(aux)
+            manyWord = i.split(' ')
+            if len(manyWord)>1:
+                palabra = manyWord[0]
+            else:
+                palabra = i
+
+            if len(palabra) > 2 or len(palabra)<24:
+                if tp.count(palabra) > 1:
+                    aux = (palabra, tp.count(palabra))
                     finaltp.append(aux)
                 else:
-                    aux = (i, tp.count(i))
+                    aux = (palabra, tp.count(palabra))
                     finaltp.append(aux)
-
         return finaltp
+
+    #return [newStr, typeUrl]
+    def readTxtInv(urls, prevDict):
+        #Se hace un filtrado previo para evitar caracteres que no sean palabras
+        # tambien se eliminan los articulos (stopwords en ingles)
+        invDic = {}
+        for url in urls:
+            try:
+                prevText = Indices.getText(url)
+                text = prevText[0].lower()
+                text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
+
+                tokenizer = RegexpTokenizer('\s+', gaps=True)
+                tp = tuple(tokenizer.tokenize(text))
+                spanish_stop = set(stopwords.words('spanish'))
+                tp = [word for word in tp if not(Indices.containsNumber(word))]
+                tp = [word for word in tp if not word.isnumeric()]
+                tp = [word for word in tp if word.isalnum()]
+                tp = [word for word in tp if word.lower() not in spanish_stop]
+                tps = set(tp)
+
+                tps = Indices.removeRepite(tps, 't', 75)
+                tps = Indices.removeRepite(tps, 'e', 25)
+                for i in tps:
+                    manyWord = i.split(' ')
+                    if len(manyWord)>1:
+                        palabra = manyWord[0]
+                    else:
+                        palabra = i
+                    
+                    if len(palabra) > 2 or len(palabra)<24:
+                        if tp.count(palabra) > 1:
+                            if palabra in invDic:
+                                invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                            else:
+                                invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                        else:
+                            if palabra in invDic:
+                                invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                            else:
+                                invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+            except Exception as e:
+                logging.error(str(e))
+        return invDic
     
     #Obtencion de un diccionario desde un archivo de texto
     def getDict(pathFile):
         data = {}
         if exists(pathFile):
-                with open(pathFile.replace('.txt','_T.txt'), encoding="utf8") as f:
-                    data = json.load(f)
+            with open(pathFile.replace('.txt','_T.txt'), encoding="utf8") as f:
+                data = json.load(f)
 
-        for key, value in data.items():
-            items = []
-            for item in value:
-                newIt = tuple(item)
-                items.append(newIt)
+            for key, value in data.items():
+                items = []
+                for item in value:
+                    newIt = tuple(item)
+                    items.append(newIt)
 
-            data[key] = items
-
+                data[key] = items
         return data
 
     def translateIndex(pathFile):
-        translator = googletrans.Translator()
+        try:
+            translator = googletrans.Translator()
 
-        with open(pathFile, encoding="utf8") as f:
-            dummyDict = json.load(f)
+            with open(pathFile, encoding="utf8") as f:
+                dummyDict = json.load(f)
 
-        engDict = {}
-        for key, value in dummyDict.items():
-            wordEng = []
-            for words in value:
-                translated = translator.translate(words[0], dest='en')
-                wordEng.append([translated.text, words[1]])
-            engDict[key] = wordEng
-
-        espDict = {}
-        for key, value in dummyDict.items():
-            wordEng = []
-            for words in value:
-                translated = translator.translate(words[0], dest='es')
-                wordEng.append([translated.text, words[1]])
-            espDict[key] = wordEng
-
-        Indices.saveTxt(engDict, 'indice-Eng')
-        Indices.saveTxt(espDict, 'indice-Esp')
+            engDict = {}
+            espDict = {}
+            try:
+                for key, value in dummyDict.items():
+                    wordEng = []
+                    try:
+                        for words in value:
+                            if words[0] != '**typeUrl**':
+                                translated = translator.translate(words[0], dest='en')
+                                wordEng.append([translated.text, words[1]])
+                            else:
+                                wordEng.append([words[0], words[1]])
+                        engDict[key] = wordEng
+                    except Exception as e:
+                        logging.error(str(e))
+                
+                for key, value in dummyDict.items():
+                    wordEng = []
+                    try:
+                        for words in value:
+                            if words[0] != '**typeUrl**':
+                                translated = translator.translate(words[0], dest='es')
+                                wordEng.append([translated.text, words[1]])
+                            else:
+                                wordEng.append([words[0], words[1]])
+                        espDict[key] = wordEng
+                    except Exception as e:
+                        logging.error(str(e))
+            except Exception as e:
+                logging.error(str(e))
+            Indices.saveTxt(engDict, 'indice-Eng.txt')
+            Indices.saveTxt(espDict, 'indice-Esp.txt')
+        except Exception as e:
+            logging.error(str(e))
 
     #Metodo principal que llama a los demás metodos que generan el diccionario
     def generateIdx(self):
@@ -277,10 +370,9 @@ class Indices:
 
                 #Se valida que la url no se encuentre en un diccioanrio previo
                 if not(url in prevDict):
-
                     #Se obtiene el texto, sin codigo html, de una url
                     text = Indices.getText(url)
-                    if len(text) > 0:
+                    if len(text[0]) > 0:
                         #Se genera el diccionario con las palabras del texto de la url
                         indN = Indices.readTxt(url=url, prevText=text, pathFile=("text"+str(i)+".txt"))
 
@@ -288,13 +380,9 @@ class Indices:
                         idx[''+url+''] = indN
                         i += 1
 
-            print(idx)
-
-
             #Si se encontro un diccionario previo
             if len(idx) > 0:
                 if len(prevDict)>0:
-
                     #Se combina el diccionario previo y el generado actualmente
                     newDict = idx.copy()
                     for key, value in prevDict.items():
@@ -303,10 +391,37 @@ class Indices:
                     #Se guardan ambos diccionarios combinados
                     Indices.saveTxt(newDict, 'indice.txt')
                 else:
-
                     #Se guarda el diccionario generado
                     Indices.saveTxt(idx, 'indice.txt')
+            pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice_T.txt')
+            Indices.translateIndex(pathFileDict)
+        except Exception as e:
+            logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
+            return jsonify(status='Error', exception=''+str(e))
 
+        res = [
+                {
+                    "status": 'Ok',
+                    "message": 'Se generó el diccionario con exito!',
+                    "data": 'si'
+                }
+            ]
+        return jsonify(res)
+
+    def generateIdxInv(self):
+        urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
+        pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceInv.txt')
+
+        try:
+            #Se obtiene el archivo de urls previamente generado
+            urls = open(pathFile, encoding="utf8")
+            urls = [word.strip() for word in urls.readlines()]
+
+            #Se abre el archivo de diccionario de existir uno
+            prevDict = Indices.getDict(pathFileDict)
+            indN = Indices.readTxtInv(urls, prevDict)
+
+            Indices.saveTxt(indN, 'indiceInv.txt')
         except Exception as e:
             logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
             return jsonify(status='Error', exception=''+str(e))
@@ -323,8 +438,6 @@ class Indices:
     #Metodo que lee el diccionario y lo regresa como respuesta json
     def getIdx(self):
         pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice.txt')
-
-        Indices.translateIndex()
 
         try:
             if exists(pathFile):

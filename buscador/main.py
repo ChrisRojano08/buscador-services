@@ -70,6 +70,17 @@ def trasnlateIdx():
         logging.exception(e)
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
+#Ruta para generar el dicionario inverso
+@app.route("/generateIdxInv")
+def generateIdxInv():
+    try:
+        response = indices.generateIdxInv()
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
 #Definimos que el host sera "localhost"
 if __name__ == "__main__":
     app.run(host='0.0.0.0')

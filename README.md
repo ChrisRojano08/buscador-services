@@ -1,4 +1,4 @@
-# buscador-services v0.4.0
+# buscador-services v0.5.0
 
 ## Proyecto buscador en python
 En el siguiente repositorio contiene el código realizado para generar un buscador web.
@@ -25,3 +25,4 @@ pip install -r requeriments.txt
 - [0.3.1] Documentación añadida
 - [0.3.2] Arreglos en el README.md y en la generación de la tupla
 - [0.4.0] Añadida funcion para traducir diccionario
+- [0.5.0] Añadida funcion para generar diccionario inverso

@@ -27,12 +27,15 @@ class Extractor:
             valilocal = i.find("localhost")
             
             if valiGoogle == -1 and valiGit == -1 and valilocal == -1:
-                if Extractor.is_registered(i):
-                    try:
-                        urllib.request.urlopen(i, timeout=25)
-                        finalTxt.append(i)
-                    except:
-                        print('',end='')
+                if not i.endswith('.css'):
+                    if not i.endswith('.pptx'):
+                        if not i.endswith('.ppt'):
+                            if Extractor.is_registered(i):
+                                try:
+                                    urllib.request.urlopen(i, timeout=25)
+                                    finalTxt.append(i)
+                                except:
+                                    print('',end='')
         return finalTxt
 
     #Obtención de urls
