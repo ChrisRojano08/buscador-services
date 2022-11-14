@@ -13,6 +13,10 @@ from flask import jsonify
 import json
 import googletrans
 import PyPDF2
+import time
+
+from .execTime import Timer
+formatTi = Timer()
 
 class Indices:
     #Eliminación de texto entre una etiqueta html (<math></math>, <verbose></verbose>, etc)
@@ -87,11 +91,12 @@ class Indices:
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
             logging.info('Solicitando info....')
-            fp = urllib.request.urlopen(url, timeout=25)
+            fp = urllib.request.urlopen(url, timeout=15)
             mybytes = fp.read()
             headers = fp.getheaders()
 
             for head in headers:
+                mystr = ''
                 if head[0] == 'Content-Type':
                     if head[1] == 'application/pdf':
                         try:
@@ -115,6 +120,21 @@ class Indices:
             
             if url.find("youtube.com") != -1:
                 typeUrl = 'YOUTUBE'
+            else:
+                listShop = ['mercadolibre.com.mx',
+                        'cyberpuerta.mx',
+                        'coppel.com',
+                        'walmart.com.mx',
+                        'amazon.com.mx',
+                        'aliexpress.com',
+                        'bodegaaurrera.com.mx',
+                        'officedepot.com.mx',
+                        'linio.com.mx'
+                    ]
+                for lsp in listShop:
+                    if url.find(lsp) != -1:
+                        typeUrl = "SHOP"
+                        break
 
             fp.close()
             logging.info('Informacion de \"'+url+'\" obtenida, procesando...')
@@ -354,6 +374,7 @@ class Indices:
 
     #Metodo principal que llama a los demás metodos que generan el diccionario
     def generateIdx(self):
+        inicio = time.time()
         urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
         pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice.txt')
 
@@ -394,21 +415,23 @@ class Indices:
                     #Se guarda el diccionario generado
                     Indices.saveTxt(idx, 'indice.txt')
             pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice_T.txt')
-            Indices.translateIndex(pathFileDict)
+            #Indices.translateIndex(pathFileDict)
         except Exception as e:
             logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
             return jsonify(status='Error', exception=''+str(e))
 
+        fin = time.time()
         res = [
                 {
                     "status": 'Ok',
                     "message": 'Se generó el diccionario con exito!',
-                    "data": 'si'
+                    "time": "Diccionario generado en "+str(formatTi.execTime(inicio, fin))
                 }
             ]
         return jsonify(res)
 
     def generateIdxInv(self):
+        inicio = time.time()
         urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
         pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceInv.txt')
 
@@ -426,11 +449,12 @@ class Indices:
             logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
             return jsonify(status='Error', exception=''+str(e))
 
+        fin = time.time()
         res = [
                 {
                     "status": 'Ok',
                     "message": 'Se generó el diccionario con exito!',
-                    "data": 'si'
+                    "time": "Diccionario generado en "+str(formatTi.execTime(inicio, fin))
                 }
             ]
         return jsonify(res)
@@ -458,17 +482,19 @@ class Indices:
 
     #Metodo que lee el diccionario y lo traduce
     def trasnlateIdx(self):
+        inicio = time.time()
         pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indice_T.txt')
 
         try:
             if exists(pathFile):
                 Indices.translateIndex(pathFile)
-
+                
+                fin = time.time()
                 res = [
                     {
                         "status": 'Ok',
                         "message": 'Se obtuvo el diccionario con exito!',
-                        "data": 'str(Indices.getDict(pathFile))'
+                        "time": "Diccionario generado en "+str(formatTi.execTime(inicio, fin))
                     }
                 ]
 

@@ -7,6 +7,10 @@ import whois
 from flask import jsonify
 import logging
 import urllib.request
+import time
+
+from .execTime import Timer
+formatTi = Timer()
 
 class Extractor: 
     #Validacion de urls mediante la libreria whois
@@ -19,24 +23,31 @@ class Extractor:
             return bool(w.domain_name)
 
     #Filtro para eliminar urls de google o github y consultas a localhost
-    def checkUrl(fileText):
-        finalTxt = []
-        for i in fileText:
-            valiGoogle = i.find("google.com")
-            valiGit = i.find("github.com")
-            valilocal = i.find("localhost")
-            
-            if valiGoogle == -1 and valiGit == -1 and valilocal == -1:
-                if not i.endswith('.css'):
-                    if not i.endswith('.pptx'):
-                        if not i.endswith('.ppt'):
-                            if Extractor.is_registered(i):
+    def checkUrl(fileText, path):
+        n=0
+        with open(path, "a", encoding="utf-8") as fileUrl:
+            try:
+                valiGoogle = fileText.find("google.com")
+                valiGit = fileText.find("github.com")
+                valilocal = fileText.find("localhost")
+                    
+                if valiGoogle == -1 and valiGit == -1 and valilocal == -1:
+                    if not fileText.endswith('.css'):
+                        if not fileText.endswith('.pptx'):
+                            if not fileText.endswith('.ppt'):
                                 try:
-                                    urllib.request.urlopen(i, timeout=25)
-                                    finalTxt.append(i)
+                                    urllib.request.urlopen(fileText, timeout=10)
+
+                                    fileUrl.write(fileText)
+                                    fileUrl.write('\n')
+                                    n=1
                                 except:
                                     print('',end='')
-        return finalTxt
+                                    n=0
+            except Exception as e:
+                logging.error(str(e))
+                n=0
+        return n
 
     #Obtención de urls
     def rFile(fileText, path):
@@ -56,29 +67,28 @@ class Extractor:
         #Se itera entre las lineas del access.log y se extrae solo las urls
         textL = []
         for ite in tp:
-            te = ite[(ite.find("HEAD ")+5):]
-            te = te[:(te.find("- HIER"))].replace(" ", "")
+            try:
+                te = ite[(ite.find("HEAD ")+5):]
+                te = te[:(te.find("- HIER"))].replace(" ", "")
+            except Exception as e:
+                logging.error(str(e))
 
             #De haber urls previas, se valida que no este repetida la url
             if not(te in oldUrls):
                 textL.append(te)
         
         #Se eliminan duplicados del access.log
-        textSave = []
+        nUrl = 0
         textIte = set(textL)
         for i in textIte:
-            if textL.count(i) > 1:
-                textSave.append(i)
-            else:
-                textSave.append(i)
-        
-        #Se revisa que la url sea valida
-        finalText = Extractor.checkUrl(fileText=textSave)
-
-        #Si se encontraron nuevas urls se guardan
-        if len(finalText) > 0:
-            #Se les da un ultimo filtro para evitar caracteres no deseados
-            Extractor.saveTxt(textIn=str(finalText).replace(",", "\n").replace("'","").replace("[","").replace("]","").replace(" ",""), nameFile=path)
+            try:
+                if textL.count(i) > 1:
+                    nUrl += Extractor.checkUrl(i, path)
+                else:
+                    nUrl += Extractor.checkUrl(i, path)
+            except Exception as e:
+                logging.error(str(e))
+        return nUrl
         
     #Guardado de urls en un archivo txt
     def saveTxt(textIn, nameFile):
@@ -91,23 +101,34 @@ class Extractor:
 
     #Metodo principal que llama a los metodos que extraen las urls
     def extractor(self):
+        inicio = time.time()
+
         pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'access.log')
         pathUrl = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
         
         try:
             url = open(pathFile, encoding="utf8")
-            Extractor.rFile(url, pathUrl)
+            nUrls = Extractor.rFile(url, pathUrl)
         except Exception as e:
             logging.error("Error al obtener la informacion\nVerifique la direccion de su path")
             return jsonify(status='Error', exception=''+str(e))
         
-
-        res = [
-                {
-                    "status": 'Ok',
-                    "message": 'Se generaron las urls con exito!'
-                }
-            ]
+        if nUrls<=0:
+            res = [
+                    {
+                        "status": 'Ok',
+                        "message": 'No se generaron nuevas urls.',
+                    }
+                ]
+        else:
+            fin = time.time()
+            res = [
+                    {
+                        "status": 'Ok',
+                        "message": 'Se generaron las urls con exito!',
+                        "time": str(nUrls)+" urls generadas en "+str(formatTi.execTime(inicio, fin))
+                    }
+                ]
 
         return jsonify(res)
 
