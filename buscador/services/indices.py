@@ -2,7 +2,6 @@ import re
 import urllib.request
 from webbrowser import get
 from xml.dom import NotFoundErr
-import nltk
 from nltk.tokenize import regexp_tokenize
 from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
@@ -14,6 +13,7 @@ import json
 import googletrans
 import PyPDF2
 import time
+from bs4 import BeautifulSoup
 
 from .execTime import Timer
 formatTi = Timer()
@@ -88,15 +88,16 @@ class Indices:
             uslessChars = [':', ",", ".", "/", "+", "\"", "\'", "\\", "\n", "$", "-", ">", '[', "]", "\t", "#"]
             uslessTags = ['script', 'semmantics', 'math', 'annotation', 'style']
             typeUrl = ''
+            mystr = ''
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
             logging.info('Solicitando info....')
-            fp = urllib.request.urlopen(url, timeout=15)
+            fp = urllib.request.urlopen(url, timeout=20)
             mybytes = fp.read()
             headers = fp.getheaders()
 
+            processExt = 'html'
             for head in headers:
-                mystr = ''
                 if head[0] == 'Content-Type':
                     if head[1] == 'application/pdf':
                         try:
@@ -106,17 +107,41 @@ class Indices:
 
                             pdfFileObj = open('savePDF' + ".pdf", 'rb')
                             pdfReader = PyPDF2.PdfFileReader(pdfFileObj, strict=False)
-                            
-                            mystr = ''
+
                             for pag in range(0, pdfReader.numPages):
                                 pageObj = pdfReader.getPage(pag)
                                 mystr += pageObj.extractText().replace('\n', ' ').replace('-', ' ')
                             typeUrl = 'PDF'
-                        except:
+
+                            processExt = 'text'
+                        except Exception as e:
                             mystr = ''
+                            logging.error(str(e))
                     else:
-                        mystr = mybytes.decode("utf8")
-                        typeUrl = 'URL'
+                        try:
+                            mystr = mybytes.decode("utf8")
+                            typeUrl = 'URL'
+                            processExt = 'html'
+                        except:
+                            mystr = mybytes.decode("latin-1")
+                            typeUrl = 'URL'
+                            processExt = 'html'
+                        finally:
+                            try:
+                                soup = BeautifulSoup(mybytes, features="html.parser")
+
+                                for script in soup(["script", "style"]):
+                                    script.extract()
+
+                                text = soup.get_text()
+
+                                lines = (line.strip() for line in text.splitlines())
+                                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                                mystr = '\n'.join(chunk for chunk in chunks if chunk)
+                                processExt = 'text'
+                            except Exception as e:
+                                mystr = ''
+                                logging.error(str(e))
             
             if url.find("youtube.com") != -1:
                 typeUrl = 'YOUTUBE'
@@ -138,47 +163,51 @@ class Indices:
 
             fp.close()
             logging.info('Informacion de \"'+url+'\" obtenida, procesando...')
-
-            auxC = ''
+            
             newStr = ''
-            i = 0
-            wordAux=''
-            #Se itera entre el codigo obtenido y obtener solo el texo
-            while i<len(mystr):
-                auxC = mystr[i]
-
-                #Se eliminan caracteres y etiquetas de html
-                if(auxC == '<'):
-                    initI = i
-                    while auxC != '>':
-                        i+=1
-                        auxC = mystr[i]
-                        wordAux+=auxC
-                        if i>len(mystr):
-                            logging.error('Se encontró un < sin cerrar')
-                            logging.error('Caracter empezo en '+ str(initI))
-                            break
-                        
-                        #Si se detecta que es una de las etiquetas sin texto util entre ellas
-                        # se llama a la funcion que elimina ese texto y las etiquetas
-                        if wordAux in uslessTags:
-                            i = Indices.removeBetweenTag(wordAux, i, mystr)
-                            break
-                        
+            if processExt=='html':
+                auxC = ''
+                
+                i = 0
                 wordAux=''
-                
-                #Si se detecta que es un de los caracteres sin texto util entre ellos
-                # se llama a la funcion que elimina ese texto
-                if(auxC == '['):
-                    i = Indices.removeBetweenChr(']', i, mystr)
+                #Se itera entre el codigo obtenido y obtener solo el texo
+                while i<len(mystr):
+                    auxC = mystr[i]
 
-                if(auxC == '{'):
-                    i = Indices.removeBetweenChr('}', i, mystr)
-                
-                if(auxC != '\n'):
-                    newStr += auxC
-                
-                i+=1
+                    #Se eliminan caracteres y etiquetas de html
+                    if(auxC == '<'):
+                        initI = i
+                        while auxC != '>':
+                            i+=1
+                            auxC = mystr[i]
+                            wordAux+=auxC
+                            if i>len(mystr):
+                                logging.error('Se encontró un < sin cerrar')
+                                logging.error('Caracter empezo en '+ str(initI))
+                                break
+                            
+                            #Si se detecta que es una de las etiquetas sin texto util entre ellas
+                            # se llama a la funcion que elimina ese texto y las etiquetas
+                            if wordAux in uslessTags:
+                                i = Indices.removeBetweenTag(wordAux, i, mystr)
+                                break
+                            
+                    wordAux=''
+                    
+                    #Si se detecta que es un de los caracteres sin texto util entre ellos
+                    # se llama a la funcion que elimina ese texto
+                    if(auxC == '['):
+                        i = Indices.removeBetweenChr(']', i, mystr)
+
+                    if(auxC == '{'):
+                        i = Indices.removeBetweenChr('}', i, mystr)
+                    
+                    if(auxC != '\n'):
+                        newStr += ''+auxC
+                    
+                    i+=1
+            else:
+                newStr = mystr
                 
             #Se eliminan los caracteres que no son utiles
             for ch in uslessChars:
@@ -388,7 +417,6 @@ class Indices:
             idx = {}
             prevDict = Indices.getDict(pathFileDict)
             for url in urls:
-
                 #Se valida que la url no se encuentre en un diccioanrio previo
                 if not(url in prevDict):
                     #Se obtiene el texto, sin codigo html, de una url
@@ -400,7 +428,8 @@ class Indices:
                         #Se almacena en el diccionario global la url como llave y sus palabras como valor ("url": (palabra, #Repeticiones))
                         idx[''+url+''] = indN
                         i += 1
-
+                    #else:
+                    #    logging.error(url+' generó NAN')
             #Si se encontro un diccionario previo
             if len(idx) > 0:
                 if len(prevDict)>0:

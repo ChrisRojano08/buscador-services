@@ -1,3 +1,5 @@
+http://ingenieria.uatx.mx/docs/RevistaIztatlComputacionNo19.pdf
+http://www.maltadvice.com/sources/verbs/top-100-verbos-mas-usados-en-ingles.pdf
 http://www.youtube.com/watch?v=HvN0nb8oboQ&list=RDGnF1S-WedwI&index=7&ab_channel=Rabikit
 http://www.netflix.com/search?q=p
 http://www.youtube.com/watch?v=8uK7SuGIsD8
@@ -6,7 +8,6 @@ http://es.frwiki.wiki/wiki/Fonction_gaussienne
 http://www.amazon.com.mx/s?k=tablet+reacondicionada&i=electronics&s=price-asc-rank&page=7&adgrpid=128576570350&gclid=Cj0KCQjwuaiXBhCCARIsAKZLt3m9J_iqW1T6Eamb9C8IUxJI1x2LgTaTwKSGHGtGWYyGlu2Ke1DOx98aAqJIEALw_wcB&hvadid=590601061192&hvdev=c&hvlocphy=20723&hvnetw=g&hvqmt=e&hvrand=6783858624419568334&hvtargid=kwd-61168776696&hydadcr=12688_13411792&qid=1659586693&ref=sr_pg_7
 http://docs.microsoft.com/es-es/windows/wsl/wsl-config
 http://aprende-web.net/jspracticas/tiempo/cod_crono.html
-http://ingenieria.uatx.mx/docs/RevistaIztatlComputacionNo19.pdf
 http://www.youtube.com/watch?v=mzB1VGEGcSU&list=RDGnF1S-WedwI&index=20
 http://www.youtube.com/watch?v=iHqa6ojKnHI&list=PLL0TiOXBeDai6x37_wQwWX6_qNZUM4FBm&index=1
 http://www.youtube.com/watch?v=WIglwWHamm8&list=RDGnF1S-WedwI&index=6
@@ -19,7 +20,6 @@ http://www.youtube.com/watch?v=D0VH50zFVIA&list=PLQxX2eiEaqbwNP20GMMCjRslRq2lOLW
 http://www.youtube.com/watch?v=yrYumpcfJYI&list=PLQxX2eiEaqbzRVxjkstjLmmn9enb0x3zi&ab_channel=TodoCode
 http://www.youtube.com/watch?v=O3hKxRLkLVU&list=PLQxX2eiEaqbwNP20GMMCjRslRq2lOLWlg&index=11
 http://support.microsoft.com/es-es/office/crear-un-diagrama-de-flujo-de-funciones-cruzadas-4a403033-9787-454f-b87e-b88452c47a21
-http://softitlan.com/taskmanager/resources/img/uploads/cuponealo-logo-108.png
 http://www.ingles.com/guia/los-verbos-auxiliares-en-ingles
 http://password.kaspersky.com/es/
 http://www.youtube.com/watch?v=FOGGoKytVvc
@@ -66,7 +66,6 @@ http://pacoguzman.github.io/2008/09/citas-paginas-web-bibtex-y-castellano/
 http://www.reddit.com/r/LaTeX/comments/4rsqlh/texmaker_wont_compile_bib_cant_open_aux_help/
 http://bellard.org/jslinux/vm.html?url=alpine-x86.cfg&mem=192
 http://www.youtube.com/watch?v=ixluUDob8Fo
-http://www.maltadvice.com/sources/verbs/top-100-verbos-mas-usados-en-ingles.pdf
 http://api.whatsapp.com/send/?text=https%3A%2F%2Fyoutu.be%2F6evAsCtLsis&type=custom_url&app_absent=0
 http://www.youtube.com/watch?v=7XhwUbf_O9g&list=RDGnF1S-WedwI&index=18
 http://app.saeko.io/enrollment/3420066
