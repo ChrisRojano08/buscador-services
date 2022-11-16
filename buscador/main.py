@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import logging
 
 #Importando paquetes que implementan la funcionalidad
@@ -7,6 +7,9 @@ extractor = Extractor()
 
 from services.indices import Indices
 indices = Indices()
+
+from services.serch import Search
+searchW = Search()
 
 app = Flask(__name__)
 
@@ -81,6 +84,18 @@ def generateIdxInv():
         logging.exception(e)
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
+#Ruta para obtener urls segun el criterio de busqueda
+@app.route("/search")
+def search():
+    datos = request.get_json()
+    try:
+        response = searchW.getUrls(datos)
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
 #Definimos que el host sera "localhost"
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', debug=True)

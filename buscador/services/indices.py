@@ -307,38 +307,42 @@ class Indices:
         for url in urls:
             try:
                 prevText = Indices.getText(url)
-                text = prevText[0].lower()
-                text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
 
-                tokenizer = RegexpTokenizer('\s+', gaps=True)
-                tp = tuple(tokenizer.tokenize(text))
-                spanish_stop = set(stopwords.words('spanish'))
-                tp = [word for word in tp if not(Indices.containsNumber(word))]
-                tp = [word for word in tp if not word.isnumeric()]
-                tp = [word for word in tp if word.isalnum()]
-                tp = [word for word in tp if word.lower() not in spanish_stop]
-                tps = set(tp)
+                if len(text[0]) > 0:
+                    text = prevText[0].lower()
+                    text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
 
-                tps = Indices.removeRepite(tps, 't', 75)
-                tps = Indices.removeRepite(tps, 'e', 25)
-                for i in tps:
-                    manyWord = i.split(' ')
-                    if len(manyWord)>1:
-                        palabra = manyWord[0]
-                    else:
-                        palabra = i
-                    
-                    if len(palabra) > 2 or len(palabra)<24:
-                        if tp.count(palabra) > 1:
-                            if palabra in invDic:
-                                invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
-                            else:
-                                invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                    tokenizer = RegexpTokenizer('\s+', gaps=True)
+                    tp = tuple(tokenizer.tokenize(text))
+                    spanish_stop = set(stopwords.words('spanish'))
+                    tp = [word for word in tp if not(Indices.containsNumber(word))]
+                    tp = [word for word in tp if not word.isnumeric()]
+                    tp = [word for word in tp if word.isalnum()]
+                    tp = [word for word in tp if word.lower() not in spanish_stop]
+                    tps = set(tp)
+
+                    tps = Indices.removeRepite(tps, 't', 75)
+                    tps = Indices.removeRepite(tps, 'e', 25)
+                    for i in tps:
+                        manyWord = i.split(' ')
+                        if len(manyWord)>1:
+                            palabra = manyWord[0]
                         else:
-                            if palabra in invDic:
-                                invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                            palabra = i
+                        
+                        if len(palabra) > 2 or len(palabra)<24:
+                            if tp.count(palabra) > 1:
+                                if palabra in invDic:
+                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                                else:
+                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
                             else:
-                                invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                                if palabra in invDic:
+                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                                else:
+                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                else:
+                    logging.error(url+' generó NAN')
             except Exception as e:
                 logging.error(str(e))
         return invDic
