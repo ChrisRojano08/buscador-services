@@ -2,9 +2,13 @@ import re
 import urllib.request
 from webbrowser import get
 from xml.dom import NotFoundErr
+
 from nltk.tokenize import regexp_tokenize
 from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
+from nltk.corpus import wordnet as wn
+from nltk.stem import SnowballStemmer
+
 import os
 from os.path import exists
 import logging
@@ -14,6 +18,8 @@ import googletrans
 import PyPDF2
 import time
 from bs4 import BeautifulSoup
+
+from urltitle import URLTitleReader
 
 from .execTime import Timer
 formatTi = Timer()
@@ -91,7 +97,6 @@ class Indices:
             mystr = ''
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
-            logging.info('Solicitando info....')
             fp = urllib.request.urlopen(url, timeout=20)
             mybytes = fp.read()
             headers = fp.getheaders()
@@ -108,6 +113,13 @@ class Indices:
                             pdfFileObj = open('savePDF' + ".pdf", 'rb')
                             pdfReader = PyPDF2.PdfFileReader(pdfFileObj, strict=False)
 
+                            info = pdfReader.getDocumentInfo()
+                            title = info.title
+
+                            if(title == None):
+                                urlN = url.split('/')
+                                title = urlN[len(urlN)-1][:-4]
+
                             for pag in range(0, pdfReader.numPages):
                                 pageObj = pdfReader.getPage(pag)
                                 mystr += pageObj.extractText().replace('\n', ' ').replace('-', ' ')
@@ -118,6 +130,9 @@ class Indices:
                             mystr = ''
                             logging.error(str(e))
                     else:
+                        reader = URLTitleReader(verify_ssl=True)
+                        title = reader.title(url)
+
                         try:
                             mystr = mybytes.decode("utf8")
                             typeUrl = 'URL'
@@ -220,7 +235,7 @@ class Indices:
         except Exception as e:
             logging.error(str(e))
             newStr = ''
-        return [newStr, typeUrl]
+        return [newStr, typeUrl, title]
 
     #Guardado en un archivo txt
     def saveTxt(textIn, nameF):
@@ -292,10 +307,10 @@ class Indices:
 
             if len(palabra) > 2 or len(palabra)<24:
                 if tp.count(palabra) > 1:
-                    aux = (palabra, tp.count(palabra))
+                    aux = (palabra, tp.count(palabra), prevText[2])
                     finaltp.append(aux)
                 else:
-                    aux = (palabra, tp.count(palabra))
+                    aux = (palabra, tp.count(palabra), prevText[2])
                     finaltp.append(aux)
         return finaltp
 
@@ -308,7 +323,7 @@ class Indices:
             try:
                 prevText = Indices.getText(url)
 
-                if len(text[0]) > 0:
+                if len(prevText[0]) > 0:
                     text = prevText[0].lower()
                     text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
 
@@ -329,18 +344,24 @@ class Indices:
                             palabra = manyWord[0]
                         else:
                             palabra = i
+
+                        spanish_stemmer = SnowballStemmer('spanish')
+                        palabraStem = spanish_stemmer.stem(palabra)
+
+                        if palabra != palabraStem:
+                            palabra = palabra+','+palabraStem
                         
                         if len(palabra) > 2 or len(palabra)<24:
                             if tp.count(palabra) > 1:
                                 if palabra in invDic:
-                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
                                 else:
-                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
                             else:
                                 if palabra in invDic:
-                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra)))
+                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
                                 else:
-                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra))]
+                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
                 else:
                     logging.error(url+' generó NAN')
             except Exception as e:

@@ -8,6 +8,10 @@ import time
 from .indices import Indices
 indices = Indices()
 
+# nltk.download('wordnet')
+# nltk.download('omw')
+# nltk.download('omw-1.4')
+
 class Search():
     def getDict(pathFile):
         data = []
@@ -39,7 +43,6 @@ class Search():
             else:
                 justUrls = []
                 for word in words:
-                    logging.error(word)
                     for key, values in invDict.items():
                         if word.lower() == key.lower():
                             for value in values:
@@ -48,8 +51,6 @@ class Search():
                                     justUrls.append(value[0])
                                 else:
                                     urls[justUrls.index(value[0])][2] += value[2]
-
-                #logging.error([sublist[0] for sublist in urls])
 
             urls.sort(key=lambda row: (row[2]))
         except Exception as e:
