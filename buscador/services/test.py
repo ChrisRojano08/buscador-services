@@ -55,10 +55,7 @@ except Exception as e:
     print(str(e))
 """
 
-txt = "welcome"
+txt = "http://www.youtube.com/results?search_query=curso+de+Spring+Boot"
 
-x = txt.split(' ')
-
-print(x)
-print(len(x))
-print(x[0])
+print(txt.index('search_query'))
+print(txt[txt.index('search_query')+13:].replace('+',' '))

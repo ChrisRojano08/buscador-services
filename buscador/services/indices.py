@@ -95,6 +95,7 @@ class Indices:
             uslessTags = ['script', 'semmantics', 'math', 'annotation', 'style']
             typeUrl = ''
             mystr = ''
+            title = ''
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
             fp = urllib.request.urlopen(url, timeout=20)
@@ -113,8 +114,11 @@ class Indices:
                             pdfFileObj = open('savePDF' + ".pdf", 'rb')
                             pdfReader = PyPDF2.PdfFileReader(pdfFileObj, strict=False)
 
-                            info = pdfReader.getDocumentInfo()
-                            title = info.title
+                            try:
+                                info = pdfReader.getDocumentInfo()
+                                title = info.title
+                            except Exception as e:
+                                title = url
 
                             if(title == None):
                                 urlN = url.split('/')
@@ -130,8 +134,15 @@ class Indices:
                             mystr = ''
                             logging.error(str(e))
                     else:
-                        reader = URLTitleReader(verify_ssl=True)
-                        title = reader.title(url)
+
+                        if "http://www.youtube.com/results?" in url:
+                            title = url[url.index('search_query')+13:].replace('+',' ')
+                        else:
+                            try:
+                                reader = URLTitleReader(verify_ssl=True)
+                                title = reader.title(url)
+                            except Exception as e:
+                                    title = url
 
                         try:
                             mystr = mybytes.decode("utf8")
@@ -231,6 +242,10 @@ class Indices:
             newStr = Indices.removeRepiteChr('\n', newStr)
 
             logging.info('Informacion obtenida!\n')
+
+            logging.error(url)
+            logging.error(title)
+            logging.error(typeUrl)
         #Si ocurre algun error se guarda ''
         except Exception as e:
             logging.error(str(e))
@@ -349,19 +364,21 @@ class Indices:
                         palabraStem = spanish_stemmer.stem(palabra)
 
                         if palabra != palabraStem:
-                            palabra = palabra+','+palabraStem
+                            palabraFull = palabra+','+palabraStem
+                        else:
+                            palabraFull = palabra
                         
                         if len(palabra) > 2 or len(palabra)<24:
                             if tp.count(palabra) > 1:
                                 if palabra in invDic:
-                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                    invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
                                 else:
-                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                                    invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
                             else:
                                 if palabra in invDic:
-                                    invDic[''+palabra+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                    invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
                                 else:
-                                    invDic[''+palabra+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                                    invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
                 else:
                     logging.error(url+' generó NAN')
             except Exception as e:
