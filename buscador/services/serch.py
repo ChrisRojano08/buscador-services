@@ -5,12 +5,10 @@ from os.path import exists
 import json
 import time
 
+from nltk.corpus import stopwords
+
 from .indices import Indices
 indices = Indices()
-
-# nltk.download('wordnet')
-# nltk.download('omw')
-# nltk.download('omw-1.4')
 
 class Search():
     def getDict(pathFile):
@@ -34,25 +32,29 @@ class Search():
             words = text.split()
 
             urls = []
+            spanish_stop = set(stopwords.words('spanish'))
+            
             if len(words) == 1:
-                for key, values in invDict.items():
-                    if text.lower() in key.lower():
-                        for value in values:
-                            if not(value[0] in urls):
-                                urls.append(value)
+                if not(text.lower() in spanish_stop):
+                    for key, values in invDict.items():
+                        if text.lower() in key.lower():
+                            for value in values:
+                                if not(value[0] in urls):
+                                    urls.append(value)
             else:
                 justUrls = []
                 for word in words:
-                    for key, values in invDict.items():
-                        if word.lower() == key.lower():
-                            for value in values:
-                                if not(value[0] in justUrls):
-                                    urls.append(value)
-                                    justUrls.append(value[0])
-                                else:
-                                    urls[justUrls.index(value[0])][2] += value[2]
+                    if not(word.lower() in spanish_stop):
+                        for key, values in invDict.items():
+                            if word.lower() in key.lower():
+                                for value in values:
+                                    if not(value[0] in justUrls):
+                                        urls.append(value)
+                                        justUrls.append(value[0])
+                                    else:
+                                        urls[justUrls.index(value[0])][2] += value[2]
 
-            urls.sort(key=lambda row: (row[2]))
+            urls.sort(key=lambda row: (row[2]), reverse=True)
         except Exception as e:
             urls = str(e)
 

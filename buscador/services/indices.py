@@ -104,7 +104,7 @@ class Indices:
 
             processExt = 'html'
             for head in headers:
-                if head[0] == 'Content-Type':
+                if head[0].lower() == 'content-type':
                     if head[1] == 'application/pdf':
                         try:
                             file = open('savePDF' + ".pdf", 'wb')
@@ -117,7 +117,7 @@ class Indices:
                             try:
                                 info = pdfReader.getDocumentInfo()
                                 title = info.title
-                            except Exception as e:
+                            except:
                                 title = url
 
                             if(title == None):
@@ -131,43 +131,58 @@ class Indices:
 
                             processExt = 'text'
                         except Exception as e:
-                            mystr = ''
                             logging.error(str(e))
                     else:
-
-                        if "http://www.youtube.com/results?" in url:
-                            title = url[url.index('search_query')+13:].replace('+',' ')
-                        else:
-                            try:
-                                reader = URLTitleReader(verify_ssl=True)
-                                title = reader.title(url)
-                            except Exception as e:
-                                    title = url
-
                         try:
                             mystr = mybytes.decode("utf8")
                             typeUrl = 'URL'
                             processExt = 'html'
-                        except:
-                            mystr = mybytes.decode("latin-1")
-                            typeUrl = 'URL'
-                            processExt = 'html'
-                        finally:
+                        except Exception as e:
                             try:
-                                soup = BeautifulSoup(mybytes, features="html.parser")
-
-                                for script in soup(["script", "style"]):
-                                    script.extract()
-
-                                text = soup.get_text()
-
-                                lines = (line.strip() for line in text.splitlines())
-                                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-                                mystr = '\n'.join(chunk for chunk in chunks if chunk)
-                                processExt = 'text'
+                                mystr = mybytes.decode("latin-1")
+                                typeUrl = 'URL'
+                                processExt = 'html'
                             except Exception as e:
-                                mystr = ''
-                                logging.error(str(e))
+                                try:
+                                    mystr = mybytes.decode("ascii")
+                                    typeUrl = 'URL'
+                                    processExt = 'html'
+                                except Exception as e:
+                                    try:
+                                        soup = BeautifulSoup(mybytes, features="html.parser")
+
+                                        for script in soup(["script", "style"]):
+                                            script.extract()
+
+                                        text = soup.get_text()
+
+                                        lines = (line.strip() for line in text.splitlines())
+                                        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                                        mystr = '\n'.join(chunk for chunk in chunks if chunk)
+                                        processExt = 'text'
+
+                                    except Exception as e:
+                                        logging.error(str(e))
+            
+            if "http://www.youtube.com/results?" in url:
+                title = url[url.index('search_query')+13:].replace('+',' ')
+            elif title=='':
+                if processExt == 'html':
+                    if '<title>' in mystr and '</title>' in mystr:
+                        title = str(mystr).split('<title>')[1].split('</title>')[0]
+                else:
+                    try:
+                        reader = URLTitleReader(verify_ssl=True)
+                        title = reader.title(url)
+                    except:
+                        title = url
+
+            if '\n' in title or 'text/html' in title or title == '' or title == ' ':
+                if 'youtube.com' in url:
+                    uu = url.split('/')
+                    title = 'Youtube - '+uu[len(uu)-1].capitalize()
+                else:
+                    title = url
             
             if url.find("youtube.com") != -1:
                 typeUrl = 'YOUTUBE'
@@ -192,46 +207,65 @@ class Indices:
             
             newStr = ''
             if processExt=='html':
-                auxC = ''
-                
-                i = 0
-                wordAux=''
-                #Se itera entre el codigo obtenido y obtener solo el texo
-                while i<len(mystr):
-                    auxC = mystr[i]
-
-                    #Se eliminan caracteres y etiquetas de html
-                    if(auxC == '<'):
-                        initI = i
-                        while auxC != '>':
-                            i+=1
-                            auxC = mystr[i]
-                            wordAux+=auxC
-                            if i>len(mystr):
-                                logging.error('Se encontró un < sin cerrar')
-                                logging.error('Caracter empezo en '+ str(initI))
-                                break
-                            
-                            #Si se detecta que es una de las etiquetas sin texto util entre ellas
-                            # se llama a la funcion que elimina ese texto y las etiquetas
-                            if wordAux in uslessTags:
-                                i = Indices.removeBetweenTag(wordAux, i, mystr)
-                                break
-                            
+                try:
+                    auxC = ''
+                    
+                    i = 0
                     wordAux=''
-                    
-                    #Si se detecta que es un de los caracteres sin texto util entre ellos
-                    # se llama a la funcion que elimina ese texto
-                    if(auxC == '['):
-                        i = Indices.removeBetweenChr(']', i, mystr)
+                    #Se itera entre el codigo obtenido y obtener solo el texo
+                    while i<len(mystr):
+                        auxC = mystr[i]
 
-                    if(auxC == '{'):
-                        i = Indices.removeBetweenChr('}', i, mystr)
-                    
-                    if(auxC != '\n'):
-                        newStr += ''+auxC
-                    
-                    i+=1
+                        #Se eliminan caracteres y etiquetas de html
+                        if(auxC == '<'):
+                            initI = i
+                            while auxC != '>':
+                                i+=1
+                                auxC = mystr[i]
+                                wordAux+=auxC
+                                if i>len(mystr):
+                                    logging.error('Se encontró un < sin cerrar')
+                                    raise
+                                
+                                #Si se detecta que es una de las etiquetas sin texto util entre ellas
+                                # se llama a la funcion que elimina ese texto y las etiquetas
+                                if wordAux in uslessTags:
+                                    i = Indices.removeBetweenTag(wordAux, i, mystr)
+                                    break
+                                
+                        wordAux=''
+                        
+                        #Si se detecta que es un de los caracteres sin texto util entre ellos
+                        # se llama a la funcion que elimina ese texto
+                        if(auxC == '['):
+                            i = Indices.removeBetweenChr(']', i, mystr)
+
+                        if(auxC == '{'):
+                            i = Indices.removeBetweenChr('}', i, mystr)
+                        
+                        if(auxC != '\n'):
+                            newStr += ''+auxC
+                        
+                        i+=1
+                except:
+                    try:
+                        soup = BeautifulSoup(mybytes, features="html.parser")
+                        for script in soup(["script", "style"]):
+                            script.extract()
+                            
+                        text = soup.get_text()
+                        lines = (line.strip() for line in text.splitlines())
+                        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                        mystr = '\n'.join(chunk for chunk in chunks if chunk)
+                    except:
+                        soup = BeautifulSoup(mybytes, features="html.parser", from_encoding="iso-8859-1")
+                        for script in soup(["script", "style"]):
+                            script.extract()
+                            
+                        text = soup.get_text()
+                        lines = (line.strip() for line in text.splitlines())
+                        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                        mystr = '\n'.join(chunk for chunk in chunks if chunk)
             else:
                 newStr = mystr
                 
@@ -242,10 +276,6 @@ class Indices:
             newStr = Indices.removeRepiteChr('\n', newStr)
 
             logging.info('Informacion obtenida!\n')
-
-            logging.error(url)
-            logging.error(title)
-            logging.error(typeUrl)
         #Si ocurre algun error se guarda ''
         except Exception as e:
             logging.error(str(e))
@@ -333,56 +363,58 @@ class Indices:
     def readTxtInv(urls, prevDict):
         #Se hace un filtrado previo para evitar caracteres que no sean palabras
         # tambien se eliminan los articulos (stopwords en ingles)
-        invDic = {}
+        invDic = prevDict[0]
+        urlsPrev = prevDict[1]
         for url in urls:
-            try:
-                prevText = Indices.getText(url)
+            if not(url in urlsPrev):
+                try:
+                    prevText = Indices.getText(url)
 
-                if len(prevText[0]) > 0:
-                    text = prevText[0].lower()
-                    text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
+                    if len(prevText[0]) > 0:
+                        text = prevText[0].lower()
+                        text = text.replace('_', ' ').replace('(','').replace(')','').replace('-','').replace(';','')
 
-                    tokenizer = RegexpTokenizer('\s+', gaps=True)
-                    tp = tuple(tokenizer.tokenize(text))
-                    spanish_stop = set(stopwords.words('spanish'))
-                    tp = [word for word in tp if not(Indices.containsNumber(word))]
-                    tp = [word for word in tp if not word.isnumeric()]
-                    tp = [word for word in tp if word.isalnum()]
-                    tp = [word for word in tp if word.lower() not in spanish_stop]
-                    tps = set(tp)
+                        tokenizer = RegexpTokenizer('\s+', gaps=True)
+                        tp = tuple(tokenizer.tokenize(text))
+                        spanish_stop = set(stopwords.words('spanish'))
+                        tp = [word for word in tp if not(Indices.containsNumber(word))]
+                        tp = [word for word in tp if not word.isnumeric()]
+                        tp = [word for word in tp if word.isalnum()]
+                        tp = [word for word in tp if word.lower() not in spanish_stop]
+                        tps = set(tp)
 
-                    tps = Indices.removeRepite(tps, 't', 75)
-                    tps = Indices.removeRepite(tps, 'e', 25)
-                    for i in tps:
-                        manyWord = i.split(' ')
-                        if len(manyWord)>1:
-                            palabra = manyWord[0]
-                        else:
-                            palabra = i
-
-                        spanish_stemmer = SnowballStemmer('spanish')
-                        palabraStem = spanish_stemmer.stem(palabra)
-
-                        if palabra != palabraStem:
-                            palabraFull = palabra+','+palabraStem
-                        else:
-                            palabraFull = palabra
-                        
-                        if len(palabra) > 2 or len(palabra)<24:
-                            if tp.count(palabra) > 1:
-                                if palabra in invDic:
-                                    invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
-                                else:
-                                    invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                        tps = Indices.removeRepite(tps, 't', 75)
+                        tps = Indices.removeRepite(tps, 'e', 25)
+                        for i in tps:
+                            manyWord = i.split(' ')
+                            if len(manyWord)>1:
+                                palabra = manyWord[0]
                             else:
-                                if palabra in invDic:
-                                    invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                palabra = i
+
+                            spanish_stemmer = SnowballStemmer('spanish')
+                            palabraStem = spanish_stemmer.stem(palabra)
+
+                            if palabra != palabraStem:
+                                palabraFull = palabra+','+palabraStem
+                            else:
+                                palabraFull = palabra
+                            
+                            if len(palabra) > 2 and len(palabra)<24:
+                                if tp.count(palabra) > 1:
+                                    if palabra in invDic:
+                                        invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                    else:
+                                        invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
                                 else:
-                                    invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
-                else:
-                    logging.error(url+' generó NAN')
-            except Exception as e:
-                logging.error(str(e))
+                                    if palabra in invDic:
+                                        invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                    else:
+                                        invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                    #else:
+                        #logging.error(url+' generó NAN')
+                except Exception as e:
+                    logging.error(str(e))
         return invDic
     
     #Obtencion de un diccionario desde un archivo de texto
@@ -400,6 +432,26 @@ class Indices:
 
                 data[key] = items
         return data
+
+    def getInvDict(pathFile):
+        data = {}
+        urls = []
+        if exists(pathFile):
+            with open(pathFile.replace('.txt','_T.txt'), encoding="utf8") as f:
+                data = json.load(f)
+
+            for key, value in data.items():
+                items = []
+                for item in value:
+                    newIt = tuple(item)
+
+                    if not(item[0] in urls):
+                        urls.append(item[0])
+
+                    items.append(newIt)
+
+                data[key] = items
+        return [data, urls]
 
     def translateIndex(pathFile):
         try:
@@ -512,8 +564,13 @@ class Indices:
             urls = [word.strip() for word in urls.readlines()]
 
             #Se abre el archivo de diccionario de existir uno
-            prevDict = Indices.getDict(pathFileDict)
-            indN = Indices.readTxtInv(urls, prevDict)
+            prevDict = Indices.getInvDict(pathFileDict)
+
+            
+            if len(prevDict)>0:
+                indN = Indices.readTxtInv(urls, prevDict)
+            else:
+                indN = Indices.readTxtInv(urls, {})
 
             Indices.saveTxt(indN, 'indiceInv.txt')
         except Exception as e:

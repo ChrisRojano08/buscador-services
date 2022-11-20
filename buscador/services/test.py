@@ -1,61 +1,128 @@
+from urltitle import URLTitleReader
 import urllib.request
 import os
 import logging
 from flask import jsonify
 import PyPDF2
+from os.path import exists
+import json
+from bs4 import BeautifulSoup
 
-def getText(url, nUrl):
+
+def generateTitle(url):
     try:
-        logging.info('Solicitando info....')
-
-        fp = urllib.request.urlopen(url, timeout=25)
+        fp = urllib.request.urlopen(url, timeout=20)
         mybytes = fp.read()
-        headers = fp.getheaders()
-        
-        for head in headers:
-            if head[0] == 'Content-Type':
-                if head[1] == 'application/pdf':
-                    file = open('tests' + str(nUrl) + ".pdf", 'wb')
-                    file.write(mybytes)
-                    file.close()
 
-                    pdfFileObj = open('tests' + str(nUrl) + ".pdf", 'rb')
-                    pdfReader = PyPDF2.PdfFileReader(pdfFileObj, strict=False)
-                    
-                    textSave = ''
-                    for pag in range(0, pdfReader.numPages):
-                        pageObj = pdfReader.getPage(pag)
-                        textSave += pageObj.extractText().replace('\n', ' ').replace('-', ' ')
-                    
-                    file = open('tests' + str(nUrl) + ".txt", 'w', encoding="utf-8")
-                    file.write(str(textSave))
-                    file.close()
-                else:
-                    mystr = mybytes.decode("utf8")
-        
-        fp.close()
-        # logging.info('Informacion de \"'+url+'\" obtenida, procesando...')
-    except Exception as e:
-        print(str(e))
-            
+        try:
+            mystr = mybytes.decode("utf8")
+            processExt = 'html'
+        except:
+            try:
+                mystr = mybytes.decode("latin-1")
+                processExt = 'html'
+            except:
+                try:
+                    mystr = mybytes.decode("ascii")
+                    processExt = 'html'
+                except:
+                    try:
+                        soup = BeautifulSoup(mybytes, features="html.parser")
 
-"""
-urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
-try:
-    urls = open(pathFile, encoding="utf8")
-    urls = [word.strip() for word in urls.readlines()]
+                        for script in soup(["script", "style"]):
+                            script.extract()
 
-    i = 0
-    for url in urls:
-        text = getText(url, i)
-        i += 1
+                        text = soup.get_text()
+
+                        lines = (line.strip() for line in text.splitlines())
+                        chunks = (phrase.strip()
+                                for line in lines for phrase in line.split("  "))
+                        mystr = '\n'.join(chunk for chunk in chunks if chunk)
+                        processExt = 'text'
+
+                    except Exception as e:
+                        logging.error(str(e))
+
+        if processExt == 'html':
+            if '<title>' in mystr and '</title>' in mystr:
+                title = str(mystr).split('<title>')[
+                            1].split('</title>')[0]
+            else:
+                try:
+                    reader = URLTitleReader(verify_ssl=True)
+                    title = reader.title(url)
+                except:
+                    title = url
+        else:
+            try:
+                reader = URLTitleReader(verify_ssl=True)
+                title = reader.title(url)
+            except:
+                title = url
+
+        if '\n' in title or 'text/html' in title or title == '' or title == ' ':
+            if 'youtube.com' in url:
+                uu = url.split('/')
+                title = 'Youtube - '+uu[len(uu)-1].capitalize()
+            else:
+                title = url
+    except:
+        title = url
+
+    return title
 
 
-except Exception as e:
-    print(str(e))
-"""
+def getInvDict(pathFile):
+    data = {}
+    urls = []
+    if exists(pathFile):
+        with open(pathFile.replace('.txt', '_T.txt'), encoding="utf8") as f:
+            data = json.load(f)
 
-txt = "http://www.youtube.com/results?search_query=curso+de+Spring+Boot"
+        for key, value in data.items():
+            items = []
+            for item in value:
+                if not(item[0] in urls):
+                    urls.append(item[0])
 
-print(txt.index('search_query'))
-print(txt[txt.index('search_query')+13:].replace('+',' '))
+                items.append(item)
+
+            data[key] = items
+    return [data, urls]
+
+
+def saveTxt(textIn, nameF):
+    pathFile = os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), 'src', nameF)
+
+    # Si recibe un texto lo guarda directo
+    if isinstance(textIn, str):
+        with open(pathFile, "a", encoding="utf-8") as f:
+            f.write(textIn)
+            f.write('\n')
+
+        f.close()
+
+    # Si recibe un diccionario se convierte a un objeto json antes de guardarlo
+    elif isinstance(textIn, dict):
+        with open(pathFile, "w", encoding="utf-8") as f:
+            f.write(json.dumps(textIn, ensure_ascii=False).replace(
+                '[', '(').replace(']', ')').replace('((', '[(').replace('))', ')]'))
+        f.close()
+
+        with open(pathFile.replace('.txt', '_T.txt'), "w", encoding="utf-8") as f:
+            f.write(json.dumps(textIn, ensure_ascii=False))
+        f.close()
+
+
+
+pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceInv.txt')
+dictI = {}
+dictI = getInvDict(pathFileDict)[0]
+
+for key, value in dictI.items():
+    for item in value:
+        if 'text/html' in item[3]:
+            item[3] = generateTitle(item[0])
+
+saveTxt(dictI, 'indiceInv.txt')
