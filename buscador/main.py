@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import logging
 
 #Importando paquetes que implementan la funcionalidad
@@ -12,6 +13,7 @@ from services.serch import Search
 searchW = Search()
 
 app = Flask(__name__)
+CORS(app)
 
 #Ruta de prueba
 @app.route("/")
