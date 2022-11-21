@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 import logging
+from flask_cors import CORS
 
 #Importando paquetes que implementan la funcionalidad
 from services.extractor_urls import Extractor
@@ -12,6 +13,7 @@ from services.serch import Search
 searchW = Search()
 
 app = Flask(__name__)
+CORS(app)
 
 #Ruta de prueba
 @app.route("/")
@@ -85,7 +87,7 @@ def generateIdxInv():
         return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
 
 #Ruta para obtener urls segun el criterio de busqueda
-@app.route("/search")
+@app.route("/search", methods=['POST'])
 def search():
     datos = request.get_json()
     try:
