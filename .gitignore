@@ -1,6 +1,15 @@
 
 .pyc
 buscador/env
+
+__pycache__
+buscador/__pycache__
 buscador/services/__pycache__
-extractor_urls.pyc
+buscador/services/src/__pycache__
+
+savePDF.pdf
+buscador/savePDF.pdf
+buscador/services/savePDF.pdf
+buscador/services/src/savePDF.pdf
+
 __init__.pyc
