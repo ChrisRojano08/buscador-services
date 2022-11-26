@@ -1,0 +1,24 @@
+name: Deploy
+on:
+  push:
+    branches: [ master ]
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Deploy backend
+      uses: appleboy/ssh-action@v0.1.4
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key_path: "devops/cajitasdeamor.pem"
+        script: |
+          cd /home/buscador-services
+          sudo git checkout master
+          sudo git pull origin master
+          sudo systemctl daemon-reload
+          sudo systemctl stop buscador-services
+          sudo systemctl start buscador-services
+          sudo systemctl enable buscador-services
+    
