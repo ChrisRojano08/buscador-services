@@ -33,14 +33,17 @@ class Search():
 
             urls = []
             spanish_stop = set(stopwords.words('spanish'))
-            
+
             if len(words) == 1:
                 if not(text.lower() in spanish_stop):
                     for key, values in invDict.items():
                         if text.lower() in key.lower():
                             for value in values:
                                 if not(value[0] in urls):
-                                    urls.append(value)
+                                    savAux = value[:]
+                                    savAux.append([[text, value[2]]])
+
+                                    urls.append(savAux)
             else:
                 justUrls = []
                 for word in words:
@@ -49,9 +52,17 @@ class Search():
                             if word.lower() in key.lower():
                                 for value in values:
                                     if not(value[0] in justUrls):
-                                        urls.append(value)
+                                        savAux = value[:]
+                                        savAux.append([[word, value[2]]])
+
+                                        urls.append(savAux)
                                         justUrls.append(value[0])
                                     else:
+                                        if any(e[0] == word for e in urls[justUrls.index(value[0])][4]):
+                                            urls[justUrls.index(value[0])] [4] [[sublist[0] for sublist in urls[justUrls.index(value[0])] [4]].index(word)][1] += value[2]
+                                        else:
+                                            urls[justUrls.index(value[0])][4].append([word, value[2]])
+                                        
                                         urls[justUrls.index(value[0])][2] += value[2]
 
             urls.sort(key=lambda row: (row[2]), reverse=True)
@@ -72,7 +83,7 @@ class Search():
             fin = time.time()
             res = {
                     "status": 'Ok',
-                    "message": 'Se generó el diccionario con exito!',
+                    "message": 'Se obtuvieron las urls con exito!',
                     "data": urls,
                     "time": str(len(urls))+" resultados obtenidos en "+str(round(fin-inicio, 4))+" segundos"
                 }
