@@ -36,7 +36,9 @@ class Extractor:
                         if not fileText.endswith('.pptx'):
                             if not fileText.endswith('.ppt'):
                                 try:
-                                    urllib.request.urlopen(fileText, timeout=10)
+                                    hdr = { 'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)' }
+                                    req = urllib.request.Request(fileText, headers=hdr)
+                                    urllib.request.urlopen(req, timeout=10)
 
                                     fileUrl.write(fileText)
                                     fileUrl.write('\n')

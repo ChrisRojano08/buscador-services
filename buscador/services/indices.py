@@ -96,9 +96,12 @@ class Indices:
             typeUrl = ''
             mystr = ''
             title = ''
+            imgsU = []
 
             #Se hace la peticion para obtener el codigo html de toda la pagina
-            fp = urllib.request.urlopen(url, timeout=20)
+            hdr = { 'User-Agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)' }
+            req = urllib.request.Request(url, headers=hdr)
+            fp = urllib.request.urlopen(req, timeout=10)
             mybytes = fp.read()
             headers = fp.getheaders()
 
@@ -162,7 +165,26 @@ class Indices:
                                         processExt = 'text'
 
                                     except Exception as e:
-                                        logging.error(str(e))
+                                        logging.error('Error al obtener info de la url: '+str(e))
+
+                        if '<img' in mystr:
+                            images = str(mystr).split('<img')
+
+                            for imgs in images:
+                                src01=''
+                                imgsSplit = imgs.split('>')[0].split('src=')
+                                if(len(imgsSplit)>1):
+                                    if imgsSplit[1][0] == '"':
+                                        src01 = imgsSplit[1][1:]
+                                        src01 = src01[:src01.index('"')]
+                                    elif imgsSplit[1][0] == '\'':
+                                        src01 = imgsSplit[1][1:]
+                                        src01 = src01[:src01.index('\'')]
+                                    
+                                    if src01 != '':
+                                        if (src01.startswith('http') or src01.startswith('data')) and not(' ' in src01):
+                                            if not(src01 in imgsU):
+                                                imgsU.append(src01)
             
             if "http://www.youtube.com/results?" in url:
                 title = url[url.index('search_query')+13:].replace('+',' ')
@@ -278,9 +300,9 @@ class Indices:
             logging.info('Informacion obtenida!\n')
         #Si ocurre algun error se guarda ''
         except Exception as e:
-            logging.error(str(e))
+            logging.error('Error en la peticion: '+str(e))
             newStr = ''
-        return [newStr, typeUrl, title]
+        return [newStr, typeUrl, title, imgsU]
 
     #Guardado en un archivo txt
     def saveTxt(textIn, nameF):
@@ -360,13 +382,15 @@ class Indices:
         return finaltp
 
     #return [newStr, typeUrl]
-    def readTxtInv(urls, prevDict):
+    def readTxtInv(urls, prevDict, prevImgDict):
         #Se hace un filtrado previo para evitar caracteres que no sean palabras
         # tambien se eliminan los articulos (stopwords en ingles)
         invDic = prevDict[0]
         urlsPrev = prevDict[1]
+
+        invImgDic = prevImgDict
         for url in urls:
-            if not(url in urlsPrev):
+            if not(url in urlsPrev) and not(url.endswith('.jpg') or url.endswith('.png') or url.endswith('.gif')):
                 try:
                     prevText = Indices.getText(url)
 
@@ -396,26 +420,31 @@ class Indices:
                             palabraStem = spanish_stemmer.stem(palabra)
 
                             if palabra != palabraStem:
-                                palabraFull = palabra+','+palabraStem
+                                palabraFull = palabraStem
                             else:
                                 palabraFull = palabra
                             
                             if len(palabra) > 2 and len(palabra)<24:
                                 if tp.count(palabra) > 1:
-                                    if palabra in invDic:
+                                    if palabraFull in invDic:
                                         invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                        invImgDic[''+palabraFull+''].append((url, tp.count(palabra), prevText[3]))
                                     else:
                                         invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                                        invImgDic[''+palabraFull+''] = [(url, tp.count(palabra), prevText[3])]
                                 else:
-                                    if palabra in invDic:
+                                    if palabraFull in invDic:
                                         invDic[''+palabraFull+''].append((url, prevText[1], tp.count(palabra), prevText[2]))
+                                        invImgDic[''+palabraFull+''].append((url, tp.count(palabra), prevText[3]))
                                     else:
                                         invDic[''+palabraFull+''] = [(url, prevText[1], tp.count(palabra), prevText[2])]
+                                        invImgDic[''+palabraFull+''] = [(url, tp.count(palabra), prevText[3])]
                     #else:
                         #logging.error(url+' generó NAN')
                 except Exception as e:
-                    logging.error(str(e))
-        return invDic
+                    logging.error('Error al obtener texto: '+str(e))
+                    print(invImgDic)
+        return [invDic, invImgDic]
     
     #Obtencion de un diccionario desde un archivo de texto
     def getDict(pathFile):
@@ -452,6 +481,22 @@ class Indices:
 
                 data[key] = items
         return [data, urls]
+
+    def getInvImgDict(pathFile):
+        data = {}
+        if exists(pathFile):
+            with open(pathFile.replace('.txt','_T.txt'), encoding="utf8") as f:
+                data = json.load(f)
+
+            for key, value in data.items():
+                items = []
+                for item in value:
+                    newIt = tuple(item)
+
+                    items.append(newIt)
+
+                data[key] = items
+        return data
 
     def translateIndex(pathFile):
         try:
@@ -557,6 +602,7 @@ class Indices:
         inicio = time.time()
         urls = pathFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'urls.txt')
         pathFileDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceInv.txt')
+        pathFileImgDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceImgInv.txt')
 
         try:
             #Se obtiene el archivo de urls previamente generado
@@ -565,14 +611,16 @@ class Indices:
 
             #Se abre el archivo de diccionario de existir uno
             prevDict = Indices.getInvDict(pathFileDict)
+            prevImgDict = Indices.getInvImgDict(pathFileImgDict)
 
-            
             if len(prevDict)>0:
-                indN = Indices.readTxtInv(urls, prevDict)
+                indN = Indices.readTxtInv(urls, prevDict, prevImgDict)
             else:
-                indN = Indices.readTxtInv(urls, {})
+                indN = Indices.readTxtInv(urls, {}, {})
 
-            Indices.saveTxt(indN, 'indiceInv.txt')
+            Indices.saveTxt(indN[0], 'indiceInv.txt')
+            Indices.saveTxt(indN[1], 'indiceImgInv.txt')
+            
         except Exception as e:
             logging.error("Error al obtener la informacion\nVerifique las urls de su archivo!")
             return jsonify(status='Error', exception=''+str(e))
