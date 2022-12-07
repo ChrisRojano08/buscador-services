@@ -7,9 +7,8 @@ buscador/__pycache__
 buscador/services/__pycache__
 buscador/services/src/__pycache__
 
-savePDF.pdf
-buscador/savePDF.pdf
-buscador/services/savePDF.pdf
-buscador/services/src/savePDF.pdf
+*.pdf
 
 __init__.pyc
+
+buscador/services/src/save

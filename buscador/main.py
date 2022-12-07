@@ -92,7 +92,55 @@ def generateIdxInv():
 def search():
     datos = request.get_json()
     try:
-        response = searchW.getUrls(datos)
+        response = searchW.getUrls(datos, 'ALL')
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
+#Ruta para obtener imagenes segun el criterio de busqueda
+@app.route("/search/images", methods=['POST'])
+def images():
+    datos = request.get_json()
+    try:
+        response = searchW.getImgs(datos)
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
+#Ruta para obtener urls de youtube segun el criterio de busqueda
+@app.route("/search/videos", methods=['POST'])
+def searchVideos():
+    datos = request.get_json()
+    try:
+        response = searchW.getUrls(datos, 'YOUTUBE')
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
+#Ruta para obtener urls de productos segun el criterio de busqueda
+@app.route("/search/shops", methods=['POST'])
+def searchShops():
+    datos = request.get_json()
+    try:
+        response = searchW.getUrls(datos, 'SHOP')
+
+        return response
+    except Exception as e:
+        logging.exception(e)
+        return jsonify(status='Error',  info='Algo salio mal', excepcion=''+str(e))
+
+#Ruta para obtener urls de youtube segun el criterio de busqueda
+@app.route("/search/pdfs", methods=['POST'])
+def searchPdfs():
+    datos = request.get_json()
+    try:
+        response = searchW.getUrls(datos, 'PDF')
 
         return response
     except Exception as e:
