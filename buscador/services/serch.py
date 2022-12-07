@@ -106,35 +106,20 @@ class Search():
             justUrls = []
             spanish_stop = set(stopwords.words('spanish'))
 
-            if len(words) == 1:
-                if not(text.lower() in spanish_stop):
+            justUrls = []
+            for word in words:
+                if not(word.lower() in spanish_stop):
                     for key, values in invImgDict.items():
-                        if key.lower() in text.lower():
+                        if key.lower() in word.lower():
                             for value in values:
                                 if not(value[0] in justUrls):
                                     for srcImg in value[2]:
                                         savAux = [value[0], value[1], srcImg]
                                         urls.append(savAux)
-
                                     justUrls.append(value[0])
-            else:
-                justUrls = []
-                for word in words:
-                    print(word)
-                    if not(word.lower() in spanish_stop):
-                        for key, values in invImgDict.items():
-                            if key.lower() in word.lower():
-                                for value in values:
-                                    if not(value[0] in justUrls):
-                                        for srcImg in value[2]:
-                                            savAux = [value[0], value[1], srcImg]
-                                            urls.append(savAux)
-
-                                        justUrls.append(value[0])
-                                    else:
-
-                                        urls[justUrls.index(value[0])][1] += value[1]
-
+                                else:
+                                    urls[justUrls.index(value[0])][1] += value[1]
+            
             urls.sort(key=lambda row: (row[1]), reverse=True)
             urls = list(urls for urls,_ in itertools.groupby(urls))
         except Exception as e:
@@ -168,18 +153,23 @@ class Search():
     def getImgs(self, datos):
         inicio = time.time()
         dataSearch = datos['search']
+        page = datos['page']
+        limit = 100
 
         try:
             pathFileInvDict = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'indiceImgInv.txt')
 
             imgs = Search.obtainImgs(dataSearch, pathFileInvDict)
+            totalIm = len(imgs)
+            imgs = imgs[limit*(page-1) : limit*page]
 
             fin = time.time()
             res = {
                     "status": 'Ok',
                     "message": 'Se obtuvieron las imagenes con exito!',
                     "data": imgs,
-                    "time": str(len(imgs))+" resultados obtenidos en "+str(round(fin-inicio, 4))+" segundos"
+                    "total": totalIm,
+                    "time": str(totalIm)+" resultados obtenidos en "+str(round(fin-inicio, 4))+" segundos"
                 }
         
         except Exception as e:
